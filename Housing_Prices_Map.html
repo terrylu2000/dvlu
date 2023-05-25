@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Data Visualization</title>
+            <link rel="stylesheet" type="text/css" href="style.css">
+
+            <script src="echarts.min.js"></script>
+        </head>
+        <body>
+            
+            <div class="container">
+                <div class="chart_2">
+                    <div class="chart_title_large">
+                        <span>Housing_Prices_Map</span>
+                    </div>
+                    <div class="chart_desc">
+                        
+                    </div>
+
+                    <div>
+                        <select class="chart_select_year">
+                            <option>2007</option>
+                            <option>2008</option>
+                            <option>2009</option>
+                            <option>2010</option>
+                            <option>2011</option>
+                            <option>2012</option>
+                            <option>2013</option>
+                            <option>2014</option>
+                            <option>2015</option>
+                            <option>2016</option>
+                            <option>2017</option>
+                        </select>
+                    </div>
+                    
+                    <div class="echarts_map"></div>
+                </div>
+            </div>
+        </body>
+    </html>
+
+    <script type="text/javascript">
+        let chart1RawData = [];   
+        let chart1DataName = 'imd_change10_19';  
+        let chart1DataList = [];  
+        
+        let chartAverageRawData = [];   
+        let chartAverageDataLsit = [];
+        
+        let areaList = []; 
+        let chart2RawData = [];   
+        let chart2DataList = [];
+        
+        let chartMapData = [];
+
+        getJSon('data/city_centre_LSOAs.json');
+
+        
+        function getJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chart1RawData = JSON.parse(xhr.responseText).features;
+
+                    renderChart1(chart1RawData, 'imd_change10_19');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        
+        function renderChart1(chart1RawData, current){
+            let xAxisList = [];  
+
+            chart1DataList = [];
+
+            chart1RawData.forEach((r) => {
+                xAxisList.push(r.properties.LSOA11CD)
+                chart1DataList.push(r.properties[current])
+            });
+
+            areaList = xAxisList;
+        };
+
+        
+        
+        getSeriesJSon(['data/price.json']);
+
+        
+        function getSeriesJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chartMapData = JSON.parse(xhr.responseText);
+
+                    renderMap(chartMapData, 2007);
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        function renderMap(mapData, currentYear){
+            let mapYearData = {
+                features: [],
+                name: mapData.name,
+                type: mapData.type
+            };
+            
+            
+            mapData.features.forEach((r) => {
+                r.properties.name = r.properties.wd11nm;
+
+                let isContain = false;
+
+                mapYearData.features.forEach((j) => {
+                    if(r.properties.wd11nm === j.properties.wd11nm){
+                        isContain = true;
+                    }
+                });
+
+                if(!isContain){
+                    mapYearData.features.push(r);
+                }
+            });
+
+            echarts.registerMap('Manchester', mapYearData);
+
+            let Chart = echarts.init(document.getElementsByClassName('echarts_map')[0]);
+
+            let seriesData = [];
+
+            mapData.features.forEach((r) => {
+                if(r.properties.year_transact === currentYear){
+                    seriesData.push({
+                        name: r.properties.wd11nm,
+                        value: r.properties.average_transact
+                    })
+                }
+            });
+
+            let option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}<br/>{c}'
+                },
+                toolbox: {
+                    show: true,
+                    left: 'left',
+                    top: 'top',
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                visualMap: {
+                    min: 80000,
+                    max: 620000,
+                    text: ['High', 'Low'],
+                    realtime: false,
+                    calculable: true,
+                    inRange: {
+                    color: ['lightskyblue', 'yellow', 'orangered']
+                    }
+                }, 
+                series: [
+                    {
+                        name: 'Housing_Prices',
+                        type: 'map',
+                        roam: true,
+                        map: 'Manchester',
+                        emphasis: {
+                            label: {
+                                show: true
+                            }
+                        },
+                        data: seriesData
+                    }
+                ]
+            };
+        
+            Chart.setOption(option);
+        }
+    </script>
+</html>

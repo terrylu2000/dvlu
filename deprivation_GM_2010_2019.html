@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Data Visualization</title>
+            <link rel="stylesheet" type="text/css" href="style.css">
+
+            <script src="echarts.min.js"></script>
+        </head>
+        <body>
+            
+            <div class="container">
+                <div class="chart_1">
+                    <div class="chart_title_large">
+                        <span>Deprivation2010_2019</span>
+                    </div>
+                    <div class="chart_desc">
+                        
+                    </div>
+
+                    <div>
+                        <select class="chart_select_average">
+                            <option>imd</option>
+                            <option>barrier_to_housing</option>
+                            <option>crime</option>
+                            <option>education</option>
+                            <option>employment</option>
+                            <option>health</option>
+                            <option>income</option>
+                            <option>living_environment</option>
+                        </select>
+                    </div>
+                    
+                    <div class="echarts_average"></div>
+                </div>
+
+            </div>
+        </body>
+    </html>
+
+    <script type="text/javascript">
+        let chart1RawData = [];   
+        let chart1DataName = 'imd_change10_19';  
+        let chart1DataList = [];  
+        let chartAverageRawData = [];   
+        let chartAverageDataLsit = [];
+        let chartAverageSelect = document.getElementsByClassName('chart_select_average')[0];
+        let areaList = []; 
+        let chart2RawData = [];   
+        let chart2DataList = [];
+        let chartYearSelect = document.getElementsByClassName('chart_select_year')[0];
+        let chartMapData = [];
+
+
+        getJSon('data/city_centre_LSOAs.json');
+
+        
+        function getJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chart1RawData = JSON.parse(xhr.responseText).features;
+
+                    renderChart1(chart1RawData, 'imd_change10_19');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        
+        function renderChart1(chart1RawData, current){
+            let xAxisList = [];  
+
+            chart1DataList = [];
+
+            chart1RawData.forEach((r) => {
+                xAxisList.push(r.properties.LSOA11CD)
+                chart1DataList.push(r.properties[current])
+            });
+
+            areaList = xAxisList;
+        };
+
+        getAverageJSon('data/deprivation_GM_2010_2019.json');
+
+        
+        function getAverageJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chartAverageRawData = JSON.parse(xhr.responseText).features;
+
+                    
+                    let filterData = chartAverageRawData.filter((r) => {return areaList.indexOf(r.properties.LSOA11CD) > -1});
+
+                    chartAverageDataLsit = filterData;
+
+                    renderAverageChart(chartAverageDataLsit, 'imd');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        
+        chartAverageSelect.addEventListener('change', function(e){
+            renderAverageChart(chartAverageDataLsit, e.target.value);
+        });
+        
+        
+        function renderAverageChart(chartAverageDataLsit, current){
+            let xAxisList = ['2010', '2019'];  
+            let seriesDataList = []; 
+
+            let amout2010 = 0;
+            let amout2019 = 0;
+            let cunrrent2010 = current + '2010';
+            let cunrrent2019 = current + '2019';
+
+            chartAverageDataLsit.forEach((r) => {
+                amout2010 += r.properties[cunrrent2010];
+                amout2019 += r.properties[cunrrent2019];
+            });
+
+            let length = chartAverageDataLsit.length;
+            let average2010 = (amout2010/length).toFixed(3);
+            let average2019 = (amout2019/length).toFixed(3);
+
+            seriesDataList = [{
+                name: current,
+                type: 'bar',
+                data: [average2010, average2019],
+                itemStyle: {
+                    normal: {
+                        color: function(params){
+                            if(params.name === '2019'){
+                                return {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 1, color: '#FF8888' 
+                                    }, {
+                                        offset: 0, color: '#880000' 
+                                    }],
+                                    global: false 
+                                }
+                            }else{
+                                return {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 1, color: '#99BBFF'
+                                    }, {
+                                        offset: 0, color: '#003377'
+                                    }],
+                                    global: false 
+                                }
+                            }
+                        }
+                    },
+                },
+            }]
+            
+            
+            let Chart = echarts.init(document.getElementsByClassName('echarts_average')[0]);
+
+            
+            let option = {
+                tooltip: {},
+                // legend: {
+                //     data: [current],
+                //     left: 'center',
+                // },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: seriesDataList
+            };
+
+            
+            Chart.setOption(option);
+        };
+
+    </script>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Data Visualization</title>
+            <link rel="stylesheet" type="text/css" href="style.css">
+
+            <script src="echarts.min.js"></script>
+        </head>
+        <body>
+            
+            <div class="container">
+                <div class="chart_2">
+                    <div class="chart_title">
+                        <span>Housing_Prices</span>
+                    </div>
+                    <div class="chart_desc">
+                        <span>Lable LR001 represents All Dwellings;
+                            Lable LR002 represents Detached Dwellings;
+                            Lable LR003 represents Semi-Detached Dwellings;
+                            Lable LR004 represents Terraced Dwellings;
+                            Lable LR005 represents Flat Dwellings;
+                            Lable LR006 represents Other Dwellings;
+                            Lable LR007 represents New Dwellings;
+                            <span>
+                    </div>
+                    
+                    <div class="echarts_main"></div>
+                </div>
+
+            </div>
+        </body>
+    </html>
+
+    <script type="text/javascript">
+        let chart1RawData = [];   //chart1RawData
+        let chart1DataName = 'imd_change10_19';  //chart1DataName
+        let chart1DataList = [];  //chart1DataList
+        
+        let chartAverageRawData = [];   //AverageRawData
+        let chartAverageDataLsit = [];
+
+        let areaList = []; //areaList
+        let chart2RawData = [];   
+        let chart2DataList = [];
+
+        let chartMapData = [];
+
+        getJSon('data/city_centre_LSOAs.json');
+
+        
+        function getJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chart1RawData = JSON.parse(xhr.responseText).features;
+
+                    
+                    renderChart1(chart1RawData, 'imd_change10_19');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+
+        // renderChart
+        function renderChart1(chart1RawData, current){
+            let xAxisList = [];  //xAxisList
+
+            chart1DataList = [];
+
+            chart1RawData.forEach((r) => {
+                xAxisList.push(r.properties.LSOA11CD)
+                chart1DataList.push(r.properties[current])
+            });
+
+            areaList = xAxisList;
+        };
+
+        // data for chart2
+        const houseFileNames = [
+            'data/E47000001_LR001MED.json',
+            'data/E47000001_LR002MED.json',
+            'data/E47000001_LR003MED.json',
+            'data/E47000001_LR004MED.json',
+            'data/E47000001_LR005MED.json',
+            'data/E47000001_LR006MED.json',
+            'data/E47000001_LR007MED.json'
+        ];
+
+        getHouseJson(houseFileNames);
+
+        
+        function getHouseJson(houseFileNames){
+            houseFileNames.forEach((fileName, index) => {
+                let xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = () => {
+                    if(xhr.readyState == 4 && xhr.status == 200){
+                        chart2RawData.push(JSON.parse(xhr.responseText));
+
+                        if(index === 6){
+                            renderChart2(chart2RawData)
+                        }
+                    }
+                }
+                xhr.open('GET', fileName, false)
+                xhr.send(null)
+            })
+        };
+
+        // renderChart2
+        function renderChart2(chart2RawData){
+            // filterData
+            chart2RawData.forEach((data) => {
+                let filterData = data.filter((r) => {return areaList.indexOf(r.lsoa11cd) > -1})
+
+                chart2DataList.push(filterData);
+            })
+
+           
+            let xAxisList = [];  
+            let keys = Object.keys(chart2DataList[0][0]);
+
+            keys.forEach((r) => {
+                if(r !== 'lsoa11cd' && r!== 'CAUTH18NM' && r!== 'lsoa11nm'){
+                    xAxisList.push(r);
+                }
+            });
+
+            // fitter name
+            let chart2DataName = ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'];
+            let chart2Series = [];
+
+            chart2DataName.forEach((r) => {
+                chart2Series.push({
+                    name: r,
+                    type: 'line',
+                    data: [],
+                })
+            })
+
+            //average vakue for yAxisList
+            chart2DataList.forEach((houseTypeList, index) => {
+                let yAxisList = []  
+
+                xAxisList.forEach((r) => {
+                    let count = 0
+                    let amout = 0
+
+                    houseTypeList.forEach((j)=> {
+                        if(j[r] !== 'NA' && j[r] !== undefined){
+                            amout += parseFloat(j[r])
+                            count += 1
+                        }
+                    })
+
+                    let average = (amout/count).toFixed(3)
+
+                    if(isNaN(average)){
+                        average = 0
+                    }
+
+                    yAxisList.push(average)
+                })
+
+                chart2Series[index].data = yAxisList
+            })
+
+            // Initialize the echarts 
+            let Chart = echarts.init(document.getElementsByClassName('echarts_main')[0]);
+
+            
+            let option = {
+                tooltip: {},
+                legend: {
+                    data: ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'],
+                    left: 'center',
+                },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: chart2Series
+            };
+
+            
+            Chart.setOption(option);
+        };
+
+    </script>
+</html>

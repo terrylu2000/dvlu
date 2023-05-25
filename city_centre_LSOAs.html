@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Data Visualization</title>
+            <link rel="stylesheet" type="text/css" href="style.css">
+
+            <script src="echarts.min.js"></script>
+        </head>
+        <body>
+            
+            <div class="container">
+                <div class="chart_1">
+                    <div class="chart_title">
+                        <span>changed_deprivation</span>
+                    </div>
+                    <div class="chart_desc">
+                        
+                    </div>
+
+                    <div>
+                        <select class="chart_select"></select>
+                    </div>
+                    
+                    <div class="echarts_main"></div>
+                </div>
+            </div>
+        </body>
+    </html>
+
+    <script type="text/javascript">
+        let chart1RawData = [];   
+        let chart1DataName = 'imd_change10_19';  
+        let chart1DataList = [];  
+        let chart1Select = document.getElementsByClassName('chart_select')[0];
+        let chartAverageRawData = [];   
+        let chartAverageDataLsit = [];
+        let chartAverageSelect = document.getElementsByClassName('chart_select_average')[0];
+        let areaList = []; 
+        let chart2RawData = [];   
+        let chart2DataList = [];
+        let chartYearSelect = document.getElementsByClassName('chart_select_year')[0];
+        let chartMapData = [];
+
+        getJSon('data/city_centre_LSOAs.json');
+
+        
+        function getJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chart1RawData = JSON.parse(xhr.responseText).features;
+
+                    renderSelect(chart1RawData);
+                    renderChart1(chart1RawData, 'imd_change10_19');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        function renderSelect(chart1RawData){
+            let keys = Object.keys(chart1RawData[0].properties);
+
+            chart1Select.options.length = 0;
+
+            keys.forEach((r) => {
+                if(r !== 'LSOA11CD'){
+                    chart1Select.options.add(new Option(r));
+                }
+            });
+        };
+
+        
+        chart1Select.addEventListener('change', function(e){
+            renderChart1(chart1RawData, e.target.value);
+        });
+
+        
+        function renderChart1(chart1RawData, current){
+            let xAxisList = [];  
+
+            chart1DataList = [];
+
+            chart1RawData.forEach((r) => {
+                xAxisList.push(r.properties.LSOA11CD)
+                chart1DataList.push(r.properties[current])
+            });
+
+            areaList = xAxisList;
+
+            
+            let Chart = echarts.init(document.getElementsByClassName('echarts_main')[0]);
+
+            
+            let option = {
+                tooltip: {},
+                // legend: {
+                //     data: [chart1DataName],
+                //     left: 'center',
+                // },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: [
+                    {
+                        name: chart1DataName,
+                        type: 'bar',
+                        data: chart1DataList,
+                        itemStyle: {
+                            normal: {
+                                color: function(params){
+                                    if(params.data > 0){
+                                        return {
+                                            type: 'linear',
+                                            x: 0,
+                                            y: 0,
+                                            x2: 0,
+                                            y2: 1,
+                                            colorStops: [{
+                                                offset: 0, color: '#FF8888' 
+                                            }, {
+                                                offset: 1, color: '#880000' 
+                                            }],
+                                            global: false 
+                                        }
+                                    }else{
+                                        return {
+                                            type: 'linear',
+                                            x: 0,
+                                            y: 0,
+                                            x2: 0,
+                                            y2: 1,
+                                            colorStops: [{
+                                                offset: 0, color: '#99BBFF' 
+                                            }, {
+                                                offset: 1, color: '#003377' 
+                                            }],
+                                            global: false 
+                                        }
+                                    }
+                                }
+                            },
+                        },
+                    }
+                ]
+            };
+
+            
+            Chart.setOption(option);
+        };
+
+
+        getAverageJSon('data/deprivation_GM_2010_2019.json');
+
+       
+        function getAverageJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chartAverageRawData = JSON.parse(xhr.responseText).features;
+
+                    
+                    let filterData = chartAverageRawData.filter((r) => {return areaList.indexOf(r.properties.LSOA11CD) > -1});
+
+                    chartAverageDataLsit = filterData;
+
+                    renderAverageChart(chartAverageDataLsit, 'imd');
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        
+        chartAverageSelect.addEventListener('change', function(e){
+            renderAverageChart(chartAverageDataLsit, e.target.value);
+        });
+        
+        
+        function renderAverageChart(chartAverageDataLsit, current){
+            let xAxisList = ['2010', '2019'];  
+            let seriesDataList = []; 
+
+            let amout2010 = 0;
+            let amout2019 = 0;
+            let cunrrent2010 = current + '2010';
+            let cunrrent2019 = current + '2019';
+
+            chartAverageDataLsit.forEach((r) => {
+                amout2010 += r.properties[cunrrent2010];
+                amout2019 += r.properties[cunrrent2019];
+            });
+
+            let length = chartAverageDataLsit.length;
+            let average2010 = (amout2010/length).toFixed(3);
+            let average2019 = (amout2019/length).toFixed(3);
+
+            seriesDataList = [{
+                name: current,
+                type: 'bar',
+                data: [average2010, average2019],
+                itemStyle: {
+                    normal: {
+                        color: function(params){
+                            if(params.name === '2019'){
+                                return {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 1, color: '#FF8888' 
+                                    }, {
+                                        offset: 0, color: '#880000' 
+                                    }],
+                                    global: false 
+                                }
+                            }else{
+                                return {
+                                    type: 'linear',
+                                    x: 0,
+                                    y: 0,
+                                    x2: 0,
+                                    y2: 1,
+                                    colorStops: [{
+                                        offset: 1, color: '#99BBFF'
+                                    }, {
+                                        offset: 0, color: '#003377'
+                                    }],
+                                    global: false 
+                                }
+                            }
+                        }
+                    },
+                },
+            }]
+            
+            
+            let Chart = echarts.init(document.getElementsByClassName('echarts_average')[0]);
+
+            
+            let option = {
+                tooltip: {},
+                // legend: {
+                //     data: [current],
+                //     left: 'center',
+                // },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: seriesDataList
+            };
+
+            
+            Chart.setOption(option);
+        };
+
+        
+        const houseFileNames = [
+            'data/E47000001_LR001MED.json',
+            'data/E47000001_LR002MED.json',
+            'data/E47000001_LR003MED.json',
+            'data/E47000001_LR004MED.json',
+            'data/E47000001_LR005MED.json',
+            'data/E47000001_LR006MED.json',
+            'data/E47000001_LR007MED.json'
+        ];
+
+        getHouseJson(houseFileNames);
+
+        
+        function getHouseJson(houseFileNames){
+            houseFileNames.forEach((fileName, index) => {
+                let xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = () => {
+                    if(xhr.readyState == 4 && xhr.status == 200){
+                        chart2RawData.push(JSON.parse(xhr.responseText));
+
+                        if(index === 6){
+                            renderChart2(chart2RawData)
+                        }
+                    }
+                }
+                xhr.open('GET', fileName, false)
+                xhr.send(null)
+            })
+        };
+
+        
+        function renderChart2(chart2RawData){
+            
+            chart2RawData.forEach((data) => {
+                let filterData = data.filter((r) => {return areaList.indexOf(r.lsoa11cd) > -1})
+
+                chart2DataList.push(filterData);
+            })
+
+            
+            let xAxisList = [];  
+            let keys = Object.keys(chart2DataList[0][0]);
+
+            keys.forEach((r) => {
+                if(r !== 'lsoa11cd' && r!== 'CAUTH18NM' && r!== 'lsoa11nm'){
+                    xAxisList.push(r);
+                }
+            });
+
+            
+            let chart2DataName = ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'];
+            let chart2Series = [];
+
+            chart2DataName.forEach((r) => {
+                chart2Series.push({
+                    name: r,
+                    type: 'line',
+                    data: [],
+                })
+            })
+
+            
+            chart2DataList.forEach((houseTypeList, index) => {
+                let yAxisList = []  
+
+                xAxisList.forEach((r) => {
+                    let count = 0
+                    let amout = 0
+
+                    houseTypeList.forEach((j)=> {
+                        if(j[r] !== 'NA' && j[r] !== undefined){
+                            amout += parseFloat(j[r])
+                            count += 1
+                        }
+                    })
+
+                    let average = (amout/count).toFixed(3)
+
+                    if(isNaN(average)){
+                        average = 0
+                    }
+
+                    yAxisList.push(average)
+                })
+
+                chart2Series[index].data = yAxisList
+            })
+
+            
+            let Chart = echarts.init(document.getElementsByClassName('echarts_main')[1]);
+
+            
+            let option = {
+                tooltip: {},
+                legend: {
+                    data: ['LR001', 'LR002', 'LR003', 'LR004', 'LR005', 'LR006', 'LR007'],
+                    left: 'center',
+                },
+                xAxis: {
+                    data: xAxisList
+                },
+                yAxis: {},
+                series: chart2Series
+            };
+
+            
+            Chart.setOption(option);
+        };
+
+        
+        
+        getSeriesJSon(['data/price.json']);
+
+        
+        function getSeriesJSon(fileName){
+            let xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = () => {
+                if(xhr.readyState == 4 && xhr.status == 200){
+                    chartMapData = JSON.parse(xhr.responseText);
+
+                    renderMap(chartMapData, 2007);
+                }
+            }
+            xhr.open('GET', fileName, false)
+            xhr.send(null)
+        };
+
+        
+        chartYearSelect.addEventListener('change', function(e){
+            renderMap(chartMapData, parseInt(e.target.value));
+        });
+
+        function renderMap(mapData, currentYear){
+            let mapYearData = {
+                features: [],
+                name: mapData.name,
+                type: mapData.type
+            };
+            
+            
+            mapData.features.forEach((r) => {
+                r.properties.name = r.properties.wd11nm;
+
+                let isContain = false;
+
+                mapYearData.features.forEach((j) => {
+                    if(r.properties.wd11nm === j.properties.wd11nm){
+                        isContain = true;
+                    }
+                });
+
+                if(!isContain){
+                    mapYearData.features.push(r);
+                }
+            });
+
+            echarts.registerMap('Manchester', mapYearData);
+
+            let Chart = echarts.init(document.getElementsByClassName('echarts_map')[0]);
+
+            let seriesData = [];
+
+            mapData.features.forEach((r) => {
+                if(r.properties.year_transact === currentYear){
+                    seriesData.push({
+                        name: r.properties.wd11nm,
+                        value: r.properties.average_transact
+                    })
+                }
+            });
+
+            let option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}<br/>{c}'
+                },
+                toolbox: {
+                    show: true,
+                    left: 'left',
+                    top: 'top',
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                visualMap: {
+                    min: 80000,
+                    max: 620000,
+                    text: ['High', 'Low'],
+                    realtime: false,
+                    calculable: true,
+                    inRange: {
+                    color: ['lightskyblue', 'yellow', 'orangered']
+                    }
+                }, 
+                series: [
+                    {
+                        name: 'Housing_Prices',
+                        type: 'map',
+                        roam: true,
+                        map: 'Manchester',
+                        emphasis: {
+                            label: {
+                                show: true
+                            }
+                        },
+                        data: seriesData
+                    }
+                ]
+            };
+        
+            Chart.setOption(option);
+        }
+    </script>
+</html>
